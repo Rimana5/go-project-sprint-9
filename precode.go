@@ -31,11 +31,11 @@ func Generator(ctx context.Context, ch chan<- int64, fn func(int64)) {
 // Worker читает число из канала in и пишет его в канал out.
 func Worker(in <-chan int64, out chan<- int64) {
 	// 2. Функция Worker
+	defer close(out)
 	for v := range in {
 		out <- v
 		time.Sleep(1 * time.Millisecond)
 	}
-	close(out)
 }
 
 func main() {
@@ -51,8 +51,8 @@ func main() {
 
 	// генерируем числа, считая параллельно их количество и сумму
 	go Generator(ctx, chIn, func(i int64) {
-		inputSum += i
-		inputCount++
+		atomic.AddInt64(&inputSum, i)   //добавление atomic
+		atomic.AddInt64(&inputCount, 1) //добавление atomic
 	})
 
 	const NumOut = 5 // количество обрабатывающих горутин и каналов
@@ -95,8 +95,8 @@ func main() {
 
 	// 5. Читаем числа из результирующего канала
 	for v := range chOut {
-		atomic.AddInt64(&sum, v)
-		atomic.AddInt64(&count, 1)
+		sum += v
+		count++
 	}
 
 	fmt.Println("Количество чисел", inputCount, count)
